@@ -3,29 +3,44 @@ const fetch = require("node-fetch"); // 👈 add this line
 const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY; // 👈 read from .env
 
 // Upload image
-const uploadImage = (req, res) => {
+const uploadImage = async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: "No file uploaded" });
   }
 
   const filename = req.file.filename;
 
-  db.query(
-    "INSERT INTO images (filename) VALUES (?)",
-    [filename],
-    (err, result) => {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: "Image uploaded successfully", filename });
-    }
-  );
-};
+  try {
+    // Use await and a try...catch block for errors
+    await db.query("INSERT INTO images (filename) VALUES (?)", [filename]);
 
+    // Construct the full URL to send back to the frontend upon successful upload
+    const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${filename}`;
+
+    res.json({ message: "Image uploaded successfully", url: imageUrl });
+  } catch (err) {
+    console.error("❌ Database insert failed:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
 // Get all images
-const getImages = (req, res) => {
-  db.query("SELECT * FROM images", (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(results);
-  });
+const getImages = async (req, res) => {
+  try {
+    // Use await to get the results from the query
+    const [results] = await db.query("SELECT * FROM images");
+
+    const imagesWithUrls = results.map((image) => {
+      return {
+        ...image,
+        url: `${req.protocol}://${req.get("host")}/uploads/${image.filename}`,
+      };
+    });
+
+    res.json(imagesWithUrls);
+  } catch (err) {
+    console.error("❌ Database query failed:", err);
+    res.status(500).json({ error: "Failed to retrieve images." });
+  }
 };
 
 const preImages = async (req, res) => {
