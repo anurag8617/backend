@@ -30,10 +30,14 @@
 
 // module.exports = router;
 
-
 const express = require("express");
 const multer = require("multer");
-const { uploadImage, getImages, preImages } = require("../controllers/imageController");
+const {
+  uploadImage,
+  getImages,
+  preImages,
+  deleteImage,
+} = require("../controllers/imageController");
 
 const router = express.Router();
 
@@ -47,5 +51,6 @@ const upload = multer({ storage });
 router.post("/upload", upload.single("image"), uploadImage);
 router.get("/", getImages);
 router.get("/pre-image", preImages);
+router.delete("/:id", deleteImage);
 
 module.exports = router;

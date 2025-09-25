@@ -42,7 +42,7 @@ const pool = mysql.createPool({
 // Test the connection when the application starts
 pool
   .getConnection()
-  .then((connection) => {
+  .then((connection) => { 
     console.log("✅✅✅ SUCCESS: Connected to MySQL database! ✅✅✅");
     connection.release();
   })

@@ -2,7 +2,59 @@ const db = require("../config/db");
 const fetch = require("node-fetch"); // 👈 add this line
 const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY; // 👈 read from .env
 
+// To delete an image
+const deleteImage = async (req, res) => {
+  const { id } = req.params; // Get the image ID from the URL
+
+  try {
+    // 1. Find the image in the database to get its filename
+    const [images] = await db.query(
+      "SELECT filename FROM images WHERE id = ?",
+      [id]
+    );
+
+    if (images.length === 0) {
+      return res.status(404).json({ error: "Image not found" });
+    }
+
+    const filename = images[0].filename;
+
+    // 2. Delete the physical file from the 'uploads' folder
+    const filePath = path.join(__dirname, "..", "uploads", filename);
+    await fs.unlink(filePath);
+
+    // 3. Delete the record from the database
+    await db.query("DELETE FROM images WHERE id = ?", [id]);
+
+    res.json({ message: "Image deleted successfully" });
+  } catch (err) {
+    console.error("❌ Failed to delete image:", err);
+    res.status(500).json({ error: "Failed to delete image" });
+  }
+};
+
 // Upload image
+// const uploadImage = async (req, res) => {
+//   if (!req.file) {
+//     return res.status(400).json({ error: "No file uploaded" });
+//   }
+
+//   const filename = req.file.filename;
+
+//   try {
+//     // Use await and a try...catch block for errors
+//     await db.query("INSERT INTO images (filename) VALUES (?)", [filename]);
+
+//     // Construct the full URL to send back to the frontend upon successful upload
+//     const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${filename}`;
+
+//     res.json({ message: "Image uploaded successfully", url: imageUrl });
+//   } catch (err) {
+//     console.error("❌ Database insert failed:", err);
+//     res.status(500).json({ error: err.message });
+//   }
+// };
+
 const uploadImage = async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: "No file uploaded" });
@@ -11,18 +63,22 @@ const uploadImage = async (req, res) => {
   const filename = req.file.filename;
 
   try {
-    // Use await and a try...catch block for errors
-    await db.query("INSERT INTO images (filename) VALUES (?)", [filename]);
-
-    // Construct the full URL to send back to the frontend upon successful upload
+    const [result] = await db.query(
+      "INSERT INTO images (filename) VALUES (?)",
+      [filename]
+    );
     const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${filename}`;
 
-    res.json({ message: "Image uploaded successfully", url: imageUrl });
+    // Return the full new image object so the frontend can add it to its state
+    const newImage = { id: result.insertId, url: imageUrl, filename };
+
+    res.json({ message: "Image uploaded successfully", newImage });
   } catch (err) {
     console.error("❌ Database insert failed:", err);
     res.status(500).json({ error: err.message });
   }
 };
+
 // Get all images
 const getImages = async (req, res) => {
   try {
@@ -72,4 +128,4 @@ const preImages = async (req, res) => {
   }
 };
 
-module.exports = { uploadImage, getImages, preImages };
+module.exports = { uploadImage, getImages, preImages, deleteImage };
